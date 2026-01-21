@@ -92,6 +92,7 @@ Reusable agent capabilities:
 |-------|-------------|
 | `conventional-commits` | Format git commits using Conventional Commits standard |
 | `code-review` | Systematic code review following best practices |
+| `incident-triage` | Triage production incidents with severity assessment, root cause analysis, and escalation |
 
 ### Rules
 
@@ -109,6 +110,7 @@ Custom subagent definitions:
 | Command | Description |
 |---------|-------------|
 | `code-reviewer.md` | Specialized code review agent |
+| `meeting-notes-evaluator.md` | Evaluates meeting notes to extract test info, todos, and risks |
 | `defect-analysis.md` | Analyzes defect patterns with root cause categorization, trend analysis, and hotspot identification |
 
 ## Directory Structure
@@ -120,7 +122,9 @@ agent-skills/
 ├── skills/             # Agent skills
 │   ├── conventional-commits/
 │   │   └── SKILL.md
-│   └── code-review/
+│   ├── code-review/
+│   │   └── SKILL.md
+│   └── incident-triage/
 │       └── SKILL.md
 ├── rules/              # Coding standards
 │   ├── code-quality.mdc
