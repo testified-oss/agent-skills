@@ -90,6 +90,7 @@ Reusable agent capabilities:
 
 | Skill | Description |
 |-------|-------------|
+| `api-testing` | Design and review API tests including contract testing, schema validation, error handling verification, and performance considerations |
 | `conventional-commits` | Format git commits using Conventional Commits standard |
 | `code-review` | Systematic code review following best practices |
 | `exploratory-testing` | Guide exploratory testing sessions including charter creation, session-based testing, heuristics application, and finding documentation |
@@ -119,6 +120,8 @@ agent-skills/
 ├── README.md           # This file
 ├── install.sh          # Universal installer
 ├── skills/             # Agent skills
+│   ├── api-testing/
+│   │   └── SKILL.md
 │   ├── code-review/
 │   │   └── SKILL.md
 │   ├── conventional-commits/
