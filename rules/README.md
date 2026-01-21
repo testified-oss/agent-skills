@@ -11,7 +11,8 @@ rules/
 ├── ci-cd-quality-gates.mdc
 ├── code-quality.mdc
 ├── pull-request-template.mdc
-└── quality-metrics.mdc
+├── quality-metrics.mdc
+└── test-data-management.mdc
 ```
 
 ## Rule Format (.mdc)
