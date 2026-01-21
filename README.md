@@ -92,6 +92,8 @@ Reusable agent capabilities:
 |-------|-------------|
 | `conventional-commits` | Format git commits using Conventional Commits standard |
 | `code-review` | Systematic code review following best practices |
+| `exploratory-testing` | Guide exploratory testing sessions including charter creation, session-based testing, heuristics application, and finding documentation |
+| `test-case-design` | Design comprehensive test cases using boundary analysis, equivalence partitioning, decision tables, and state transition testing |
 | `incident-triage` | Triage production incidents with severity assessment, root cause analysis, and escalation |
 
 ### Rules
@@ -120,8 +122,13 @@ agent-skills/
 ├── README.md           # This file
 ├── install.sh          # Universal installer
 ├── skills/             # Agent skills
+│   ├── code-review/
+│   │   └── SKILL.md
 │   ├── conventional-commits/
 │   │   └── SKILL.md
+│   ├── exploratory-testing/
+│   │   └── SKILL.md
+│   └── test-case-design/
 │   ├── code-review/
 │   │   └── SKILL.md
 │   └── incident-triage/
