@@ -109,6 +109,7 @@ Custom subagent definitions:
 | Command | Description |
 |---------|-------------|
 | `code-reviewer.md` | Specialized code review agent |
+| `defect-analysis.md` | Analyzes defect patterns with root cause categorization, trend analysis, and hotspot identification |
 
 ## Directory Structure
 
