@@ -8,9 +8,9 @@ Rules are `.mdc` files with YAML frontmatter:
 
 ```
 rules/
-├── conventional-commits.mdc
 ├── code-quality.mdc
-└── pull-request-template.mdc
+├── pull-request-template.mdc
+└── quality-metrics.mdc
 ```
 
 ## Rule Format (.mdc)
