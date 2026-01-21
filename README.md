@@ -92,6 +92,7 @@ Reusable agent capabilities:
 |-------|-------------|
 | `conventional-commits` | Format git commits using Conventional Commits standard |
 | `code-review` | Systematic code review following best practices |
+| `incident-triage` | Triage production incidents with severity assessment, root cause analysis, and escalation |
 
 ### Rules
 
@@ -120,7 +121,9 @@ agent-skills/
 ├── skills/             # Agent skills
 │   ├── conventional-commits/
 │   │   └── SKILL.md
-│   └── code-review/
+│   ├── code-review/
+│   │   └── SKILL.md
+│   └── incident-triage/
 │       └── SKILL.md
 ├── rules/              # Coding standards
 │   ├── code-quality.mdc
