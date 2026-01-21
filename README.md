@@ -90,8 +90,12 @@ Reusable agent capabilities:
 
 | Skill | Description |
 |-------|-------------|
+| `api-testing` | Design and review API tests including contract testing, schema validation, error handling verification, and performance considerations |
 | `conventional-commits` | Format git commits using Conventional Commits standard |
 | `code-review` | Systematic code review following best practices |
+| `exploratory-testing` | Guide exploratory testing sessions including charter creation, session-based testing, heuristics application, and finding documentation |
+| `test-case-design` | Design comprehensive test cases using boundary analysis, equivalence partitioning, decision tables, and state transition testing |
+| `incident-triage` | Triage production incidents with severity assessment, root cause analysis, and escalation |
 
 ### Rules
 
@@ -109,6 +113,8 @@ Custom subagent definitions:
 | Command | Description |
 |---------|-------------|
 | `code-reviewer.md` | Specialized code review agent |
+| `meeting-notes-evaluator.md` | Evaluates meeting notes to extract test info, todos, and risks |
+| `defect-analysis.md` | Analyzes defect patterns with root cause categorization, trend analysis, and hotspot identification |
 
 ## Directory Structure
 
@@ -117,9 +123,18 @@ agent-skills/
 ├── README.md           # This file
 ├── install.sh          # Universal installer
 ├── skills/             # Agent skills
+│   ├── api-testing/
+│   │   └── SKILL.md
+│   ├── code-review/
+│   │   └── SKILL.md
 │   ├── conventional-commits/
 │   │   └── SKILL.md
-│   └── code-review/
+│   ├── exploratory-testing/
+│   │   └── SKILL.md
+│   └── test-case-design/
+│   ├── code-review/
+│   │   └── SKILL.md
+│   └── incident-triage/
 │       └── SKILL.md
 ├── rules/              # Coding standards
 │   ├── code-quality.mdc
