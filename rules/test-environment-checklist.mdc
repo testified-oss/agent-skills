@@ -1,0 +1,750 @@
+---
+description: Rule providing checklists for test environment setup, validation, and maintenance including data refresh, service dependencies, and configuration verification
+alwaysApply: false
+---
+
+# Test Environment Checklist
+
+## Purpose
+
+This rule provides comprehensive checklists for setting up, validating, and maintaining test environments. Proper environment management ensures reliable test execution, reduces flaky tests, and accelerates development cycles by providing consistent, predictable testing infrastructure.
+
+## Environment Lifecycle
+
+```
+┌─────────┐    ┌──────────┐    ┌──────────┐    ┌───────────┐    ┌──────────┐
+│  PLAN   │───▶│  SETUP   │───▶│ VALIDATE │───▶│  OPERATE  │───▶│ MAINTAIN │
+│         │    │          │    │          │    │           │    │          │
+└─────────┘    └──────────┘    └──────────┘    └───────────┘    └──────────┘
+     │              │               │                │               │
+     ▼              ▼               ▼                ▼               ▼
+ Requirements   Provision      Health Check      Monitor        Refresh
+ Dependencies   Configure      Smoke Tests       Alerts         Cleanup
+ Resources      Seed Data      Connectivity      Logs           Update
+```
+
+## 1. Environment Setup Checklist
+
+**Purpose:** Ensure consistent and complete environment provisioning.
+
+### Pre-Setup Requirements
+
+| Requirement | Description | Verification |
+|-------------|-------------|--------------|
+| Resource allocation | CPU, memory, storage defined | Capacity planning doc |
+| Network access | Required ports and endpoints | Network diagram |
+| Credentials | Service accounts and secrets | Secret manager |
+| Dependencies list | All required services identified | Dependency matrix |
+| Configuration specs | Environment-specific values | Config template |
+
+### Setup Checklist
+
+- [ ] **Infrastructure Provisioned**
+  - [ ] Compute resources allocated (VMs, containers, serverless)
+  - [ ] Storage volumes created and mounted
+  - [ ] Network configuration applied (VPCs, subnets, security groups)
+  - [ ] Load balancers configured (if applicable)
+  - [ ] DNS entries created
+
+- [ ] **Databases Configured**
+  - [ ] Database instances provisioned
+  - [ ] Schemas created and migrated
+  - [ ] User accounts and permissions set
+  - [ ] Connection pooling configured
+  - [ ] Backup policies defined (for persistent environments)
+
+- [ ] **Services Deployed**
+  - [ ] Application containers/processes deployed
+  - [ ] Service mesh or discovery configured
+  - [ ] API gateways configured
+  - [ ] Message queues provisioned
+  - [ ] Cache layers initialized
+
+- [ ] **Security Configured**
+  - [ ] TLS certificates installed
+  - [ ] Authentication mechanisms enabled
+  - [ ] API keys and tokens provisioned
+  - [ ] Firewall rules applied
+  - [ ] Secrets injected securely
+
+- [ ] **Monitoring Enabled**
+  - [ ] Logging configured and shipping
+  - [ ] Metrics collection active
+  - [ ] Alerting rules defined
+  - [ ] Dashboards created
+
+### Example: Infrastructure as Code Setup
+
+```yaml
+# test-environment.yaml
+environment:
+  name: test-${ENVIRONMENT_ID}
+  type: ephemeral  # or persistent
+  ttl: 24h
+  
+infrastructure:
+  compute:
+    type: kubernetes
+    namespace: test-${ENVIRONMENT_ID}
+    resources:
+      cpu: "4"
+      memory: "8Gi"
+      
+  database:
+    type: postgresql
+    version: "15"
+    instance_size: small
+    storage_gb: 20
+    
+  cache:
+    type: redis
+    version: "7"
+    memory_mb: 512
+    
+  messaging:
+    type: rabbitmq
+    version: "3.12"
+    
+setup_scripts:
+  - scripts/provision-infrastructure.sh
+  - scripts/apply-migrations.sh
+  - scripts/seed-test-data.sh
+  - scripts/configure-services.sh
+```
+
+## 2. Service Dependencies Checklist
+
+**Purpose:** Verify all required services are available and properly connected.
+
+### Dependency Types
+
+| Type | Examples | Validation Method |
+|------|----------|-------------------|
+| Internal services | Auth, payments, notifications | Health endpoints |
+| Databases | PostgreSQL, MongoDB, Redis | Connection test |
+| External APIs | Payment gateways, SMS providers | Mock or sandbox |
+| Message queues | RabbitMQ, Kafka, SQS | Queue connectivity |
+| Storage | S3, GCS, local filesystem | Write/read test |
+
+### Requirements
+
+- MUST document all service dependencies before environment setup
+- MUST verify connectivity to all dependencies during validation
+- MUST use mocks or stubs for external third-party services
+- SHOULD use service discovery or configuration for dependency endpoints
+- MUST NOT hardcode production endpoints in test configurations
+- SHOULD implement circuit breakers for flaky dependencies
+- MUST define timeout and retry policies for each dependency
+
+### Dependency Validation Checklist
+
+- [ ] **Database Connectivity**
+  - [ ] Connection string valid
+  - [ ] Credentials working
+  - [ ] Schema version correct
+  - [ ] Connection pool healthy
+  - [ ] Read/write operations successful
+
+- [ ] **Internal Services**
+  - [ ] Service discovery resolving
+  - [ ] Health endpoints responding
+  - [ ] Authentication working
+  - [ ] API contracts compatible
+  - [ ] Latency within acceptable range
+
+- [ ] **External Services (Mocked)**
+  - [ ] Mock servers running
+  - [ ] Expected responses configured
+  - [ ] Error scenarios available
+  - [ ] Rate limiting simulated (if needed)
+
+- [ ] **Message Queues**
+  - [ ] Connection established
+  - [ ] Queues/topics created
+  - [ ] Publish/subscribe working
+  - [ ] Dead letter queues configured
+
+- [ ] **Cache Services**
+  - [ ] Connection established
+  - [ ] Read/write operations working
+  - [ ] Eviction policies configured
+
+### Example: Dependency Health Check
+
+```typescript
+// health-check.ts
+interface DependencyStatus {
+  name: string;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  latency_ms: number;
+  message?: string;
+}
+
+async function validateDependencies(): Promise<DependencyStatus[]> {
+  const checks = [
+    checkDatabase(),
+    checkRedis(),
+    checkMessageQueue(),
+    checkAuthService(),
+    checkPaymentMock(),
+  ];
+  
+  const results = await Promise.allSettled(checks);
+  
+  return results.map((result, index) => {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+    return {
+      name: checks[index].name,
+      status: 'unhealthy',
+      latency_ms: -1,
+      message: result.reason?.message,
+    };
+  });
+}
+
+async function checkDatabase(): Promise<DependencyStatus> {
+  const start = Date.now();
+  try {
+    await db.query('SELECT 1');
+    return {
+      name: 'postgresql',
+      status: 'healthy',
+      latency_ms: Date.now() - start,
+    };
+  } catch (error) {
+    return {
+      name: 'postgresql',
+      status: 'unhealthy',
+      latency_ms: Date.now() - start,
+      message: error.message,
+    };
+  }
+}
+```
+
+## 3. Configuration Verification Checklist
+
+**Purpose:** Ensure environment configurations are correct and consistent.
+
+### Configuration Categories
+
+| Category | Examples | Risk if Wrong |
+|----------|----------|---------------|
+| Endpoints | API URLs, service hosts | Connection failures |
+| Credentials | Passwords, API keys, tokens | Auth failures |
+| Feature flags | Toggle states, A/B tests | Unexpected behavior |
+| Thresholds | Timeouts, limits, quotas | Performance issues |
+| Integration | Third-party settings | External failures |
+
+### Requirements
+
+- MUST validate all configuration values before test execution
+- MUST use environment-specific configuration files or variables
+- MUST NOT commit secrets to version control
+- SHOULD use schema validation for configuration files
+- MUST log configuration validation results (without exposing secrets)
+- SHOULD compare configuration against a known baseline
+- MUST fail fast if critical configuration is missing or invalid
+
+### Configuration Verification Checklist
+
+- [ ] **Environment Variables**
+  - [ ] All required variables set
+  - [ ] No placeholder values remaining
+  - [ ] Secrets properly injected
+  - [ ] Environment indicator correct (test, staging, etc.)
+
+- [ ] **Application Configuration**
+  - [ ] Config file present and valid
+  - [ ] Schema validation passes
+  - [ ] Feature flags set correctly
+  - [ ] Logging level appropriate
+  - [ ] Debug mode disabled (unless needed)
+
+- [ ] **Connection Strings**
+  - [ ] Database URLs correct
+  - [ ] Service endpoints reachable
+  - [ ] Timeout values appropriate
+  - [ ] Retry policies configured
+
+- [ ] **Security Settings**
+  - [ ] TLS enabled where required
+  - [ ] Certificate validation appropriate
+  - [ ] CORS settings correct
+  - [ ] Auth configuration valid
+
+### Example: Configuration Validation
+
+```typescript
+// config-validator.ts
+import { z } from 'zod';
+
+const testEnvironmentConfigSchema = z.object({
+  environment: z.enum(['test', 'staging', 'ci']),
+  database: z.object({
+    host: z.string().min(1),
+    port: z.number().min(1).max(65535),
+    name: z.string().min(1),
+    user: z.string().min(1),
+    password: z.string().min(1),
+    ssl: z.boolean().default(false),
+    pool_size: z.number().min(1).max(100).default(10),
+  }),
+  services: z.object({
+    auth_url: z.string().url(),
+    payment_mock_url: z.string().url(),
+    notification_mock_url: z.string().url(),
+  }),
+  features: z.object({
+    new_checkout: z.boolean(),
+    beta_features: z.boolean().default(false),
+  }),
+  timeouts: z.object({
+    request_ms: z.number().min(100).max(30000).default(5000),
+    database_ms: z.number().min(100).max(30000).default(10000),
+  }),
+});
+
+function validateConfig(config: unknown) {
+  const result = testEnvironmentConfigSchema.safeParse(config);
+  
+  if (!result.success) {
+    console.error('Configuration validation failed:');
+    result.error.issues.forEach(issue => {
+      console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
+    });
+    throw new Error('Invalid test environment configuration');
+  }
+  
+  console.log('Configuration validation passed');
+  return result.data;
+}
+```
+
+## 4. Data Refresh Checklist
+
+**Purpose:** Maintain fresh, consistent test data across environment lifecycles.
+
+### Refresh Strategies
+
+| Strategy | Use Case | Frequency | Complexity |
+|----------|----------|-----------|------------|
+| Full reset | Clean slate needed | Per test run | Low |
+| Incremental seed | Add new scenarios | Daily/weekly | Medium |
+| Snapshot restore | Quick reset to known state | Per test suite | Medium |
+| Production subset | Realistic data needed | Weekly/monthly | High |
+| Synthetic generation | Privacy-safe data | On demand | Medium |
+
+### Requirements
+
+- MUST define data refresh strategy per environment type
+- MUST version control seed data and migration scripts
+- MUST NOT use production PII in test data (see test-data-management rule)
+- SHOULD automate data refresh processes
+- MUST validate data integrity after refresh
+- SHOULD track data freshness metrics
+- MUST document data dependencies between entities
+
+### Data Refresh Checklist
+
+- [ ] **Pre-Refresh**
+  - [ ] Backup current state (if needed)
+  - [ ] Notify dependent teams (for shared environments)
+  - [ ] Verify refresh scripts are current
+  - [ ] Check storage availability
+  - [ ] Disable active tests during refresh
+
+- [ ] **Refresh Execution**
+  - [ ] Truncate or drop existing data
+  - [ ] Apply database migrations
+  - [ ] Load seed data in dependency order
+  - [ ] Generate synthetic data (if applicable)
+  - [ ] Apply data transformations
+
+- [ ] **Post-Refresh Validation**
+  - [ ] Verify record counts
+  - [ ] Check referential integrity
+  - [ ] Validate required entities exist
+  - [ ] Run smoke tests against refreshed data
+  - [ ] Update refresh timestamp
+
+### Example: Data Refresh Script
+
+```yaml
+# data-refresh.yaml
+refresh:
+  name: test-environment-refresh
+  schedule: "0 6 * * *"  # Daily at 6 AM
+  
+steps:
+  - name: Pre-refresh checks
+    script: |
+      # Verify no active test runs
+      if [ "$(curl -s $TEST_COORDINATOR/active-runs | jq '.count')" -gt 0 ]; then
+        echo "Active test runs detected, aborting refresh"
+        exit 1
+      fi
+      
+  - name: Create backup
+    script: |
+      pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+      
+  - name: Reset database
+    script: |
+      psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+      
+  - name: Apply migrations
+    script: |
+      npm run db:migrate
+      
+  - name: Seed base data
+    script: |
+      npm run db:seed -- --file=fixtures/base.json
+      
+  - name: Generate synthetic users
+    script: |
+      npm run generate:users -- --count=1000
+      
+  - name: Validate refresh
+    script: |
+      npm run validate:data-integrity
+      
+  - name: Update metadata
+    script: |
+      curl -X POST $TEST_COORDINATOR/environments/$ENV_ID/refresh \
+        -d '{"timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "status": "success"}'
+```
+
+## 5. Environment Maintenance Checklist
+
+**Purpose:** Keep test environments healthy, performant, and cost-effective.
+
+### Maintenance Activities
+
+| Activity | Frequency | Impact if Skipped |
+|----------|-----------|-------------------|
+| Log rotation | Daily | Disk space exhaustion |
+| Data cleanup | Daily/Weekly | Performance degradation |
+| Certificate renewal | Before expiry | Service failures |
+| Dependency updates | Weekly/Monthly | Security vulnerabilities |
+| Performance monitoring | Continuous | Undetected degradation |
+| Cost optimization | Monthly | Budget overrun |
+
+### Requirements
+
+- MUST implement automated cleanup for ephemeral environments
+- MUST monitor environment health metrics
+- SHOULD set up alerts for critical thresholds
+- MUST review and clean up orphaned resources regularly
+- SHOULD track environment costs and usage
+- MUST document maintenance procedures
+- MUST establish SLAs for environment availability
+
+### Maintenance Checklist
+
+- [ ] **Daily Maintenance**
+  - [ ] Rotate and archive logs
+  - [ ] Clean up temporary files
+  - [ ] Delete expired test data
+  - [ ] Review error rates
+  - [ ] Check disk space usage
+
+- [ ] **Weekly Maintenance**
+  - [ ] Review environment metrics
+  - [ ] Clean up orphaned resources
+  - [ ] Update dependencies (minor versions)
+  - [ ] Verify backup integrity
+  - [ ] Review and close stale test environments
+
+- [ ] **Monthly Maintenance**
+  - [ ] Review environment costs
+  - [ ] Update base images
+  - [ ] Security patching
+  - [ ] Capacity planning review
+  - [ ] Documentation updates
+  - [ ] Disaster recovery testing
+
+- [ ] **As Needed**
+  - [ ] Certificate renewal
+  - [ ] Major version upgrades
+  - [ ] Infrastructure scaling
+  - [ ] Incident response and recovery
+
+### Example: Automated Cleanup Job
+
+```typescript
+// cleanup-job.ts
+interface CleanupConfig {
+  ephemeral_ttl_hours: number;
+  stale_data_days: number;
+  log_retention_days: number;
+}
+
+async function runEnvironmentCleanup(config: CleanupConfig) {
+  const results = {
+    environments_deleted: 0,
+    records_cleaned: 0,
+    storage_freed_mb: 0,
+    errors: [] as string[],
+  };
+  
+  // 1. Delete expired ephemeral environments
+  const expiredEnvs = await db.query(`
+    SELECT id, name FROM environments 
+    WHERE type = 'ephemeral' 
+    AND created_at < NOW() - INTERVAL '${config.ephemeral_ttl_hours} hours'
+  `);
+  
+  for (const env of expiredEnvs) {
+    try {
+      await deleteEnvironment(env.id);
+      results.environments_deleted++;
+    } catch (error) {
+      results.errors.push(`Failed to delete env ${env.name}: ${error.message}`);
+    }
+  }
+  
+  // 2. Clean up stale test data
+  const deleteResult = await db.query(`
+    DELETE FROM test_records 
+    WHERE created_at < NOW() - INTERVAL '${config.stale_data_days} days'
+    AND environment_type = 'test'
+  `);
+  results.records_cleaned = deleteResult.rowCount;
+  
+  // 3. Archive old logs
+  const archivedLogs = await archiveOldLogs(config.log_retention_days);
+  results.storage_freed_mb = archivedLogs.freed_mb;
+  
+  // 4. Report results
+  await notifyCleanupResults(results);
+  
+  return results;
+}
+```
+
+### Example: Health Monitoring Configuration
+
+```yaml
+# monitoring.yaml
+monitoring:
+  health_checks:
+    - name: api_health
+      endpoint: /health
+      interval: 30s
+      timeout: 5s
+      threshold: 3  # failures before alert
+      
+    - name: database_health
+      type: tcp
+      host: ${DB_HOST}
+      port: 5432
+      interval: 30s
+      timeout: 10s
+      
+    - name: redis_health
+      type: tcp
+      host: ${REDIS_HOST}
+      port: 6379
+      interval: 30s
+      timeout: 5s
+      
+  metrics:
+    - name: cpu_usage
+      threshold: 80
+      alert: warning
+      
+    - name: memory_usage
+      threshold: 85
+      alert: warning
+      
+    - name: disk_usage
+      threshold: 90
+      alert: critical
+      
+    - name: error_rate
+      threshold: 5  # percent
+      alert: critical
+      
+  alerts:
+    channels:
+      - type: slack
+        webhook: ${SLACK_WEBHOOK}
+      - type: email
+        recipients: [test-team@example.com]
+```
+
+## 6. Environment Validation Smoke Tests
+
+**Purpose:** Quickly verify environment is operational before running full test suites.
+
+### Smoke Test Categories
+
+| Category | Purpose | Expected Duration |
+|----------|---------|-------------------|
+| Connectivity | Verify all services reachable | < 30 seconds |
+| Authentication | Verify auth flows working | < 1 minute |
+| Data access | Verify read/write operations | < 1 minute |
+| Critical paths | Verify core functionality | < 5 minutes |
+
+### Requirements
+
+- MUST run smoke tests before any test suite execution
+- MUST fail fast if smoke tests fail
+- SHOULD complete all smoke tests in under 5 minutes
+- MUST cover all critical dependencies
+- SHOULD include both positive and basic negative cases
+- MUST provide clear error messages on failure
+
+### Smoke Test Checklist
+
+- [ ] **Connectivity Tests**
+  - [ ] Application server responds
+  - [ ] Database connection successful
+  - [ ] Cache connection successful
+  - [ ] Message queue connection successful
+  - [ ] External mock services respond
+
+- [ ] **Authentication Tests**
+  - [ ] Can obtain test tokens
+  - [ ] Token validation working
+  - [ ] Role-based access working
+
+- [ ] **Basic Operations**
+  - [ ] Can create a test record
+  - [ ] Can read the created record
+  - [ ] Can update the record
+  - [ ] Can delete the record
+
+- [ ] **Integration Points**
+  - [ ] Event publishing works
+  - [ ] Event consumption works
+  - [ ] Cache read/write works
+  - [ ] File storage works
+
+### Example: Smoke Test Suite
+
+```typescript
+// smoke-tests.ts
+describe('Environment Smoke Tests', () => {
+  const SMOKE_TIMEOUT = 30000; // 30 seconds per test
+  
+  describe('Connectivity', () => {
+    it('should connect to the application', async () => {
+      const response = await fetch(`${API_URL}/health`);
+      expect(response.status).toBe(200);
+    }, SMOKE_TIMEOUT);
+    
+    it('should connect to the database', async () => {
+      const result = await db.query('SELECT 1 as connected');
+      expect(result.rows[0].connected).toBe(1);
+    }, SMOKE_TIMEOUT);
+    
+    it('should connect to Redis', async () => {
+      await redis.set('smoke_test', 'ok');
+      const value = await redis.get('smoke_test');
+      expect(value).toBe('ok');
+      await redis.del('smoke_test');
+    }, SMOKE_TIMEOUT);
+  });
+  
+  describe('Authentication', () => {
+    it('should issue test tokens', async () => {
+      const token = await authService.getTestToken({ role: 'user' });
+      expect(token).toBeDefined();
+      expect(token.length).toBeGreaterThan(0);
+    }, SMOKE_TIMEOUT);
+    
+    it('should validate tokens', async () => {
+      const token = await authService.getTestToken({ role: 'user' });
+      const validated = await authService.validateToken(token);
+      expect(validated.valid).toBe(true);
+    }, SMOKE_TIMEOUT);
+  });
+  
+  describe('CRUD Operations', () => {
+    let testRecordId: string;
+    
+    it('should create a record', async () => {
+      const response = await api.post('/test-records', {
+        name: 'smoke_test_record',
+        value: 'test',
+      });
+      expect(response.status).toBe(201);
+      testRecordId = response.data.id;
+    }, SMOKE_TIMEOUT);
+    
+    it('should read the record', async () => {
+      const response = await api.get(`/test-records/${testRecordId}`);
+      expect(response.status).toBe(200);
+      expect(response.data.name).toBe('smoke_test_record');
+    }, SMOKE_TIMEOUT);
+    
+    it('should delete the record', async () => {
+      const response = await api.delete(`/test-records/${testRecordId}`);
+      expect(response.status).toBe(204);
+    }, SMOKE_TIMEOUT);
+  });
+});
+```
+
+## Anti-Patterns
+
+### Avoid These Practices
+
+- **Snowflake environments:** Each environment manually configured differently
+- **Missing documentation:** No record of environment configuration
+- **Hardcoded values:** Configuration embedded in code instead of externalized
+- **Shared credentials:** Using same credentials across all environments
+- **No cleanup strategy:** Environments accumulate resources indefinitely
+- **Manual validation:** Relying on human checks instead of automated tests
+- **Production dependencies:** Test environments depending on production services
+- **Ignored alerts:** Not acting on environment health warnings
+
+### Signs of Poor Environment Management
+
+- Tests that pass locally but fail in CI (environment inconsistency)
+- Long environment setup times (>30 minutes)
+- Frequent "environment is broken" messages
+- High costs from orphaned resources
+- Flaky tests due to environmental factors
+- Security incidents from exposed test credentials
+
+## Quick Reference Checklists
+
+### New Environment Setup
+
+```
+□ Infrastructure provisioned
+□ Services deployed
+□ Dependencies connected
+□ Configuration validated
+□ Data seeded
+□ Smoke tests passing
+□ Monitoring enabled
+□ Documentation updated
+```
+
+### Pre-Test Run Validation
+
+```
+□ Environment health check passes
+□ All dependencies healthy
+□ Configuration current
+□ Data state verified
+□ Smoke tests pass
+□ No active maintenance
+```
+
+### Environment Teardown
+
+```
+□ Test results exported
+□ Logs archived
+□ Data cleaned up
+□ Resources deallocated
+□ DNS entries removed
+□ Costs reconciled
+```

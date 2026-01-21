@@ -104,6 +104,8 @@ Coding standards and conventions:
 | `pull-request-template.mdc` | Standard PR format with summary, changes, issues |
 | `quality-metrics.mdc` | Standard quality metrics with recommended thresholds |
 | `ci-cd-quality-gates.mdc` | Quality gates for CI/CD pipelines including coverage, security, performance |
+| `test-data-management.mdc` | Test data isolation, cleanup, sensitive data handling, environment configs |
+| `test-environment-checklist.mdc` | Checklists for test environment setup, validation, and maintenance |
 
 ### Commands
 

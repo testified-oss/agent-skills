@@ -12,7 +12,8 @@ rules/
 ├── code-quality.mdc
 ├── pull-request-template.mdc
 ├── quality-metrics.mdc
-└── test-data-management.mdc
+├── test-data-management.mdc
+└── test-environment-checklist.mdc
 ```
 
 ## Rule Format (.mdc)
