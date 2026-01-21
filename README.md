@@ -112,6 +112,7 @@ Custom subagent definitions:
 | Command | Description |
 |---------|-------------|
 | `code-reviewer.md` | Specialized code review agent |
+| `regression-impact.md` | Analyzes code changes to recommend regression test scope and prioritization |
 
 ## Directory Structure
 

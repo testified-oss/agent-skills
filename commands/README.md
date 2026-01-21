@@ -9,6 +9,7 @@ Commands are markdown files with YAML frontmatter:
 ```
 commands/
 ├── code-reviewer.md
+├── regression-impact.md
 ├── test-writer.md
 └── documentation-generator.md
 ```
