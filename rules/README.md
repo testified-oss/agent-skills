@@ -8,6 +8,7 @@ Rules are `.mdc` files with YAML frontmatter:
 
 ```
 rules/
+├── ci-cd-quality-gates.mdc
 ├── code-quality.mdc
 ├── pull-request-template.mdc
 └── quality-metrics.mdc

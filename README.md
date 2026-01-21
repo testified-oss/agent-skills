@@ -92,6 +92,7 @@ Reusable agent capabilities:
 |-------|-------------|
 | `conventional-commits` | Format git commits using Conventional Commits standard |
 | `code-review` | Systematic code review following best practices |
+| `test-planning` | Create comprehensive test plans with scope, resources, risks, and criteria |
 
 ### Rules
 
@@ -101,6 +102,8 @@ Coding standards and conventions:
 |------|-------------|
 | `code-quality.mdc` | Naming conventions, functions, error handling |
 | `pull-request-template.mdc` | Standard PR format with summary, changes, issues |
+| `quality-metrics.mdc` | Standard quality metrics with recommended thresholds |
+| `ci-cd-quality-gates.mdc` | Quality gates for CI/CD pipelines including coverage, security, performance |
 
 ### Commands
 
@@ -119,7 +122,9 @@ agent-skills/
 ├── skills/             # Agent skills
 │   ├── conventional-commits/
 │   │   └── SKILL.md
-│   └── code-review/
+│   ├── code-review/
+│   │   └── SKILL.md
+│   └── test-planning/
 │       └── SKILL.md
 ├── rules/              # Coding standards
 │   ├── code-quality.mdc
