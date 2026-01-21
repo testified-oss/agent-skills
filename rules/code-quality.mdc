@@ -1,0 +1,131 @@
+---
+description: Enforces code quality standards including naming, formatting, and best practices
+alwaysApply: true
+---
+
+# Code Quality Standards
+
+## Naming Conventions
+
+### Variables and Functions
+- Use descriptive names that reveal intent
+- Use camelCase for variables and functions
+- Use PascalCase for classes and types
+- Use SCREAMING_SNAKE_CASE for constants
+
+```typescript
+// Good
+const userProfile = await fetchUserProfile(userId);
+const MAX_RETRY_ATTEMPTS = 3;
+
+// Bad
+const up = await fup(id);
+const max = 3;
+```
+
+### Boolean Variables
+- Prefix with `is`, `has`, `can`, `should`, or similar
+
+```typescript
+// Good
+const isLoading = true;
+const hasPermission = checkPermission(user);
+const canEdit = user.role === 'admin';
+
+// Bad
+const loading = true;
+const permission = checkPermission(user);
+```
+
+## Functions
+
+### Single Responsibility
+- Each function should do one thing well
+- If a function needs "and" in its description, split it
+
+### Function Length
+- Prefer functions under 20 lines
+- Extract complex logic into helper functions
+
+### Parameters
+- Limit to 3-4 parameters maximum
+- Use an options object for more parameters
+
+```typescript
+// Good
+function createUser(options: CreateUserOptions) { }
+
+// Bad
+function createUser(name, email, age, role, department, manager) { }
+```
+
+## Error Handling
+
+### Always Handle Errors
+- Never silently catch and ignore errors
+- Log errors with context
+- Provide meaningful error messages
+
+```typescript
+// Good
+try {
+  await saveUser(user);
+} catch (error) {
+  logger.error('Failed to save user', { userId: user.id, error });
+  throw new UserSaveError('Could not save user profile', { cause: error });
+}
+
+// Bad
+try {
+  await saveUser(user);
+} catch (e) {
+  // ignore
+}
+```
+
+## Comments
+
+### When to Comment
+- Explain WHY, not WHAT
+- Document non-obvious business logic
+- Add TODO comments for future work (with issue reference)
+
+```typescript
+// Good: Explains why
+// We retry 3 times because the payment API has intermittent failures
+const MAX_RETRIES = 3;
+
+// Bad: Explains what (obvious from code)
+// Set max retries to 3
+const MAX_RETRIES = 3;
+```
+
+## Imports
+
+### Organization
+1. External dependencies first
+2. Internal absolute imports
+3. Relative imports
+4. Separate groups with blank lines
+
+```typescript
+// External
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+
+// Internal absolute
+import { Button } from '@/components/ui';
+import { useAuth } from '@/hooks/auth';
+
+// Relative
+import { UserCard } from './UserCard';
+import type { User } from './types';
+```
+
+## Avoid
+
+- Magic numbers and strings (use named constants)
+- Deep nesting (max 3 levels)
+- Long files (consider splitting at 300+ lines)
+- Commented-out code (delete it, git remembers)
+- Console.log in production code (use proper logging)

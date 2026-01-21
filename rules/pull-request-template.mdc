@@ -1,0 +1,89 @@
+---
+description: Standard pull request format with summary, description, changes, and related issues
+alwaysApply: true
+---
+
+# Pull Request Template
+
+When creating pull requests, use this template structure.
+
+## Required Sections
+
+### Summary
+Brief overview of what this PR does (1-2 sentences).
+
+### Description
+Detailed explanation of the changes and why they were made. Include:
+- Context and motivation
+- Technical approach taken
+- Any alternatives considered
+
+### Changes
+Bullet list of specific changes, one per line.
+
+### Related Issues
+Link to related GitHub issues using keywords.
+
+## Template
+
+```markdown
+## Summary
+Brief overview of what this PR does (1-2 sentences)
+
+## Description
+Detailed explanation of the changes and why they were made
+
+## Changes
+- Change 1
+- Change 2
+- Change 3
+
+## Related Issues
+Closes #123
+Refs #456
+```
+
+## Example
+
+```markdown
+## Summary
+Add user authentication flow with OAuth2 support
+
+## Description
+Implements login/logout functionality using OAuth2 with Google and GitHub
+providers. This replaces the previous basic auth system to improve security
+and user experience.
+
+The implementation uses the authorization code flow with PKCE for enhanced
+security. Session tokens are stored in HTTP-only cookies with a 7-day expiry.
+
+## Changes
+- Add OAuth2 configuration for Google and GitHub
+- Create login and callback route handlers
+- Add session management with secure cookies
+- Update user model with provider fields
+- Add logout endpoint with token revocation
+- Add middleware for protected routes
+
+## Related Issues
+Closes #42
+Closes #51
+Refs #38
+```
+
+## Issue Keywords
+
+| Keyword | Effect |
+|---------|--------|
+| `Closes #123` | Closes issue when PR merges |
+| `Fixes #123` | Closes issue when PR merges |
+| `Resolves #123` | Closes issue when PR merges |
+| `Refs #123` | Links without closing |
+
+## Best Practices
+
+1. **Write for reviewers** - They may not have your context
+2. **Be concise but complete** - Include enough detail to understand
+3. **Link issues** - Provides traceability
+4. **Update as needed** - Edit description if scope changes
+5. **Use screenshots** - For UI changes, include before/after
