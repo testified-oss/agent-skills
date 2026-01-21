@@ -109,6 +109,7 @@ Custom subagent definitions:
 | Command | Description |
 |---------|-------------|
 | `code-reviewer.md` | Specialized code review agent |
+| `meeting-notes-evaluator.md` | Evaluates meeting notes to extract test info, todos, and risks |
 
 ## Directory Structure
 
