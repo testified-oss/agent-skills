@@ -93,6 +93,7 @@ Reusable agent capabilities:
 | `api-testing` | Design and review API tests including contract testing, schema validation, error handling verification, and performance considerations |
 | `conventional-commits` | Format git commits using Conventional Commits standard |
 | `code-review` | Systematic code review following best practices |
+| `test-planning` | Create comprehensive test plans with scope, resources, risks, and criteria |
 | `exploratory-testing` | Guide exploratory testing sessions including charter creation, session-based testing, heuristics application, and finding documentation |
 | `test-case-design` | Design comprehensive test cases using boundary analysis, equivalence partitioning, decision tables, and state transition testing |
 | `incident-triage` | Triage production incidents with severity assessment, root cause analysis, and escalation |
@@ -105,6 +106,10 @@ Coding standards and conventions:
 |------|-------------|
 | `code-quality.mdc` | Naming conventions, functions, error handling |
 | `pull-request-template.mdc` | Standard PR format with summary, changes, issues |
+| `quality-metrics.mdc` | Standard quality metrics with recommended thresholds |
+| `ci-cd-quality-gates.mdc` | Quality gates for CI/CD pipelines including coverage, security, performance |
+| `test-data-management.mdc` | Test data isolation, cleanup, sensitive data handling, environment configs |
+| `test-environment-checklist.mdc` | Checklists for test environment setup, validation, and maintenance |
 
 ### Commands
 
@@ -113,6 +118,7 @@ Custom subagent definitions:
 | Command | Description |
 |---------|-------------|
 | `code-reviewer.md` | Specialized code review agent |
+| `regression-impact.md` | Analyzes code changes to recommend regression test scope and prioritization |
 | `meeting-notes-evaluator.md` | Evaluates meeting notes to extract test info, todos, and risks |
 | `defect-analysis.md` | Analyzes defect patterns with root cause categorization, trend analysis, and hotspot identification |
 
@@ -129,6 +135,7 @@ agent-skills/
 │   │   └── SKILL.md
 │   ├── conventional-commits/
 │   │   └── SKILL.md
+│   └── test-planning/
 │   ├── exploratory-testing/
 │   │   └── SKILL.md
 │   └── test-case-design/

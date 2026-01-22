@@ -1,0 +1,330 @@
+---
+description: Defines quality gates for CI/CD pipelines including test coverage, defect thresholds, performance baselines, and security requirements
+alwaysApply: false
+---
+
+# CI/CD Quality Gates
+
+## Purpose
+
+This rule defines mandatory quality gates that MUST pass before code can progress through CI/CD pipeline stages. Quality gates act as automated checkpoints ensuring only code meeting defined standards reaches production.
+
+## Pipeline Stages and Gates
+
+```
+┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌────────────┐
+│  Build  │───▶│  Test   │───▶│ Security│───▶│  Perf   │───▶│ Production │
+│  Gate   │    │  Gate   │    │  Gate   │    │  Gate   │    │   Deploy   │
+└─────────┘    └─────────┘    └─────────┘    └─────────┘    └────────────┘
+```
+
+## 1. Build Gate
+
+**Purpose:** Verify code compiles and meets basic quality standards.
+
+### Requirements
+
+- MUST compile without errors
+- MUST pass linting with zero errors
+- MUST resolve all dependencies successfully
+- SHOULD have zero linting warnings (may be waived for legacy code)
+- MUST NOT include debug flags or development-only configurations
+
+### Blocking Conditions
+
+| Condition | Severity | Action |
+|-----------|----------|--------|
+| Compilation failure | Critical | Block immediately |
+| Linting errors | Critical | Block immediately |
+| Dependency resolution failure | Critical | Block immediately |
+| Linting warnings > threshold | Warning | Review required |
+
+## 2. Test Coverage Gate
+
+**Purpose:** Ensure adequate automated test coverage before deployment.
+
+### Minimum Coverage Thresholds
+
+| Metric | Minimum | Target | Blocking |
+|--------|---------|--------|----------|
+| Line Coverage | 70% | 80% | Yes, if below minimum |
+| Branch Coverage | 65% | 75% | Yes, if below minimum |
+| Function Coverage | 80% | 90% | Yes, if below minimum |
+| Critical Path Coverage | 90% | 100% | Yes, if below minimum |
+
+### Requirements
+
+- MUST meet minimum line coverage threshold
+- MUST meet minimum branch coverage threshold
+- MUST have 100% coverage for critical business logic
+- MUST NOT decrease overall coverage by more than 2% per PR
+- SHOULD include integration tests for new APIs
+- SHOULD include E2E tests for user-facing features
+
+### Test Results Requirements
+
+- MUST have zero failing tests
+- MUST have zero skipped tests in critical paths
+- SHOULD have test execution time < 10 minutes for unit tests
+- MUST NOT have flaky tests (>1% failure rate)
+
+```yaml
+# Example CI configuration
+test_gate:
+  coverage:
+    line: 70
+    branch: 65
+    function: 80
+  thresholds:
+    critical_paths: 90
+    new_code: 80
+  requirements:
+    all_tests_pass: true
+    max_skipped: 5
+    max_flaky_rate: 0.01
+```
+
+## 3. Defect Gate
+
+**Purpose:** Prevent known defects from reaching production.
+
+### Severity Definitions
+
+| Severity | Definition | Example |
+|----------|------------|---------|
+| Critical | System unusable, data loss, security breach | Authentication bypass |
+| Major | Feature broken, significant UX impact | Payment processing failure |
+| Minor | Feature degraded, workaround exists | Incorrect date formatting |
+| Trivial | Cosmetic, no functional impact | Typo in UI |
+
+### Blocking Rules
+
+| Stage | Critical | Major | Minor | Trivial |
+|-------|----------|-------|-------|---------|
+| Development | Block | Block | Allow | Allow |
+| Staging | Block | Block | Block | Allow |
+| Production | Block | Block | Block | Block* |
+
+*Trivial defects may be released with approval.
+
+### Requirements
+
+- MUST have zero critical defects in release candidates
+- MUST have zero major defects in release candidates
+- MUST NOT deploy with any known security vulnerabilities rated High or Critical
+- SHOULD resolve minor defects before release
+- MUST document all known defects in release notes
+
+```yaml
+# Example defect gate configuration
+defect_gate:
+  production:
+    critical: 0
+    major: 0
+    minor: 5      # Maximum allowed
+    trivial: 10   # Maximum allowed
+  staging:
+    critical: 0
+    major: 0
+    minor: 3
+```
+
+## 4. Security Gate
+
+**Purpose:** Identify and block security vulnerabilities before deployment.
+
+### Scan Requirements
+
+| Scan Type | When | Blocking |
+|-----------|------|----------|
+| SAST (Static Analysis) | Every commit | Critical/High findings |
+| SCA (Dependency Scan) | Every build | Critical/High CVEs |
+| Secrets Detection | Every commit | Any detected secret |
+| DAST (Dynamic Analysis) | Pre-production | Critical findings |
+| Container Scan | Image build | Critical/High CVEs |
+
+### Vulnerability Thresholds
+
+| Severity | Maximum Allowed | Resolution SLA |
+|----------|-----------------|----------------|
+| Critical | 0 | Immediate |
+| High | 0 | 24 hours |
+| Medium | 5 | 7 days |
+| Low | 20 | 30 days |
+
+### Requirements
+
+- MUST run SAST on every pull request
+- MUST scan dependencies for known vulnerabilities (CVEs)
+- MUST block commits containing secrets or credentials
+- MUST scan container images before registry push
+- SHOULD run DAST against staging environment
+- MUST NOT deploy with Critical or High severity findings
+- MUST maintain a vulnerability remediation backlog
+
+```yaml
+# Example security gate configuration
+security_gate:
+  sast:
+    enabled: true
+    fail_on: [critical, high]
+  sca:
+    enabled: true
+    fail_on_cvss: 7.0
+    ignore_dev_dependencies: false
+  secrets:
+    enabled: true
+    fail_on_any: true
+  container:
+    enabled: true
+    fail_on: [critical, high]
+```
+
+## 5. Performance Gate
+
+**Purpose:** Ensure application meets performance requirements before release.
+
+### Baseline Metrics
+
+| Metric | Threshold | Measurement |
+|--------|-----------|-------------|
+| Response Time (P50) | < 200ms | API endpoints |
+| Response Time (P95) | < 500ms | API endpoints |
+| Response Time (P99) | < 1000ms | API endpoints |
+| Error Rate | < 0.1% | All requests |
+| Throughput | > baseline | Requests/second |
+| Memory Usage | < 80% | Container limit |
+| CPU Usage | < 70% | Under normal load |
+
+### Requirements
+
+- MUST establish performance baselines for critical paths
+- MUST run load tests before production deployment
+- MUST NOT regress P95 response time by more than 10%
+- MUST NOT regress throughput by more than 5%
+- SHOULD run performance tests in production-like environment
+- MUST alert on performance regression detection
+- SHOULD compare against baseline from last successful deployment
+
+### Load Test Requirements
+
+| Test Type | Frequency | Duration |
+|-----------|-----------|----------|
+| Smoke Test | Every deployment | 5 minutes |
+| Load Test | Pre-production | 30 minutes |
+| Stress Test | Weekly | 1 hour |
+| Soak Test | Pre-major release | 4+ hours |
+
+```yaml
+# Example performance gate configuration
+performance_gate:
+  response_time:
+    p50_ms: 200
+    p95_ms: 500
+    p99_ms: 1000
+  regression:
+    max_response_time_increase: 10%
+    max_throughput_decrease: 5%
+  thresholds:
+    error_rate: 0.001
+    cpu_percent: 70
+    memory_percent: 80
+```
+
+## Gate Override Process
+
+### When Overrides Are Permitted
+
+- Emergency security patches
+- Critical production fixes
+- Time-sensitive business requirements (with executive approval)
+
+### Override Requirements
+
+- MUST document reason for override
+- MUST have approval from designated authority
+- MUST create follow-up ticket for proper remediation
+- MUST NOT override Critical security findings
+- SHOULD implement compensating controls
+- MUST notify security team for security-related overrides
+
+```yaml
+# Example override record
+override:
+  gate: test_coverage
+  reason: "Critical hotfix for payment processing outage"
+  approved_by: "CTO"
+  timestamp: "2025-01-22T10:30:00Z"
+  follow_up_ticket: "JIRA-1234"
+  expires: "2025-01-29T10:30:00Z"
+```
+
+## Monitoring and Reporting
+
+### Required Dashboards
+
+- MUST display current gate status for all active pipelines
+- MUST show historical pass/fail rates per gate
+- MUST track override frequency and reasons
+- SHOULD alert on gate failure trends
+
+### Metrics to Track
+
+| Metric | Purpose |
+|--------|---------|
+| Gate pass rate | Pipeline health indicator |
+| Time to pass all gates | Deployment velocity |
+| Override frequency | Process adherence |
+| Defect escape rate | Gate effectiveness |
+
+## Example Complete Pipeline Configuration
+
+```yaml
+quality_gates:
+  build:
+    lint_errors: 0
+    compile_errors: 0
+    
+  test:
+    coverage:
+      line: 70
+      branch: 65
+    all_tests_pass: true
+    max_duration_minutes: 15
+    
+  security:
+    sast_fail_on: [critical, high]
+    sca_cvss_threshold: 7.0
+    secrets_fail_on_any: true
+    
+  performance:
+    response_time_p95_ms: 500
+    error_rate_threshold: 0.001
+    regression_tolerance: 10%
+    
+  defects:
+    critical: 0
+    major: 0
+
+  notifications:
+    on_failure: [slack, email]
+    on_override: [security-team, management]
+```
+
+## Anti-Patterns
+
+### Avoid These Practices
+
+- Disabling gates to meet deadlines
+- Setting thresholds so low they never fail
+- Ignoring flaky test signals
+- Overriding gates without documentation
+- Measuring gate pass rate without analyzing failures
+- Skipping gates in "emergency" without formal override process
+
+### Signs of Unhealthy Gates
+
+- Override rate > 5%
+- Same failures repeatedly bypassed
+- Gates that haven't blocked anything in months (too lenient)
+- Gates that block > 50% of builds (too strict or broken tests)

@@ -1,0 +1,192 @@
+---
+description: Defines standard quality metrics to track with recommended thresholds for measuring software quality
+alwaysApply: false
+---
+
+# Quality Metrics Standards
+
+## Purpose
+
+This rule defines standard quality metrics that teams SHOULD track to measure and improve software quality. Each metric includes recommended thresholds to help teams assess their quality posture.
+
+## Core Metrics
+
+### 1. Defect Density
+
+**Definition:** Number of defects per 1,000 lines of code (KLOC).
+
+**Formula:** `Defect Density = (Total Defects / KLOC)`
+
+**Recommended Thresholds:**
+| Rating | Threshold |
+|--------|-----------|
+| Excellent | < 1.0 defects/KLOC |
+| Good | 1.0 - 3.0 defects/KLOC |
+| Acceptable | 3.0 - 5.0 defects/KLOC |
+| Poor | > 5.0 defects/KLOC |
+
+**Requirements:**
+- MUST track defects found in production and pre-production
+- SHOULD categorize by severity (critical, major, minor)
+- MUST NOT include intentional technical debt as defects
+
+### 2. Test Coverage
+
+**Definition:** Percentage of code executed by automated tests.
+
+**Formula:** `Test Coverage = (Lines Covered / Total Lines) × 100`
+
+**Recommended Thresholds:**
+| Rating | Threshold |
+|--------|-----------|
+| Excellent | > 80% |
+| Good | 70% - 80% |
+| Acceptable | 50% - 70% |
+| Poor | < 50% |
+
+**Requirements:**
+- MUST measure both line and branch coverage
+- SHOULD prioritize coverage of critical paths over total percentage
+- MUST NOT game metrics by writing tests without meaningful assertions
+- SHOULD track coverage trends over time, not just point-in-time values
+
+```typescript
+// Good: Meaningful test with proper assertions
+describe('calculateTotal', () => {
+  it('should apply discount when order exceeds threshold', () => {
+    const order = createOrder({ items: [{ price: 100, quantity: 2 }] });
+    const total = calculateTotal(order, { discountThreshold: 150 });
+    expect(total).toBe(180); // 10% discount applied
+  });
+});
+
+// Bad: Coverage gaming without meaningful verification
+describe('calculateTotal', () => {
+  it('should work', () => {
+    calculateTotal(createOrder({ items: [] }));
+    // No assertions - just executing code for coverage
+  });
+});
+```
+
+### 3. Escape Rate
+
+**Definition:** Percentage of defects found in production vs. pre-production.
+
+**Formula:** `Escape Rate = (Production Defects / Total Defects) × 100`
+
+**Recommended Thresholds:**
+| Rating | Threshold |
+|--------|-----------|
+| Excellent | < 5% |
+| Good | 5% - 10% |
+| Acceptable | 10% - 20% |
+| Poor | > 20% |
+
+**Requirements:**
+- MUST track where each defect was discovered (dev, QA, staging, production)
+- SHOULD analyze escaped defects for root cause patterns
+- MUST categorize production defects by customer impact
+- SHOULD use escape rate to improve testing strategy
+
+### 4. Mean Time to Detect (MTTD)
+
+**Definition:** Average time between defect introduction and detection.
+
+**Formula:** `MTTD = Σ(Detection Time - Introduction Time) / Number of Defects`
+
+**Recommended Thresholds:**
+| Rating | Threshold |
+|--------|-----------|
+| Excellent | < 1 day |
+| Good | 1 - 3 days |
+| Acceptable | 3 - 7 days |
+| Poor | > 7 days |
+
+**Requirements:**
+- MUST track when defects were introduced (commit date)
+- MUST track when defects were detected (issue creation date)
+- SHOULD measure separately for different defect severities
+- SHOULD correlate MTTD with testing phases to identify gaps
+
+### 5. Automation Coverage
+
+**Definition:** Percentage of test cases that are automated vs. manual.
+
+**Formula:** `Automation Coverage = (Automated Tests / Total Tests) × 100`
+
+**Recommended Thresholds:**
+| Rating | Threshold |
+|--------|-----------|
+| Excellent | > 80% |
+| Good | 60% - 80% |
+| Acceptable | 40% - 60% |
+| Poor | < 40% |
+
+**Requirements:**
+- MUST track automation coverage by test type (unit, integration, e2e)
+- SHOULD prioritize automating regression tests first
+- MUST NOT automate tests that provide no value (one-time exploratory)
+- SHOULD calculate automation ROI for high-frequency test scenarios
+
+## Metric Tracking Best Practices
+
+### Collection
+- MUST automate metric collection where possible
+- SHOULD integrate metrics into CI/CD pipeline
+- MUST store historical data for trend analysis
+
+### Reporting
+- SHOULD review metrics weekly or bi-weekly
+- MUST make metrics visible to the entire team
+- SHOULD set improvement targets based on baseline measurements
+
+### Thresholds
+- Thresholds are guidelines, not absolute rules
+- MUST adjust thresholds based on project context and risk tolerance
+- SHOULD establish team-specific targets that drive improvement
+
+## Example Dashboard Metrics
+
+```yaml
+quality_metrics:
+  defect_density:
+    current: 2.1
+    target: 2.0
+    trend: improving
+    
+  test_coverage:
+    line: 75%
+    branch: 68%
+    target: 80%
+    
+  escape_rate:
+    current: 8%
+    target: 5%
+    last_30_days: 3 escaped defects
+    
+  mttd:
+    average: 2.3 days
+    p95: 5.1 days
+    target: 2.0 days
+    
+  automation_coverage:
+    unit: 92%
+    integration: 71%
+    e2e: 45%
+    overall: 78%
+```
+
+## Anti-Patterns
+
+### Avoid These Practices
+- Gaming metrics by writing meaningless tests
+- Ignoring context when comparing metrics across teams
+- Using metrics punitively rather than for improvement
+- Focusing on a single metric at the expense of others
+- Setting unrealistic targets that discourage the team
+
+### Balance Quality Investment
+- High coverage with low defect density = healthy codebase
+- High coverage with high escape rate = tests missing critical paths
+- Low MTTD with high escape rate = good monitoring, weak prevention

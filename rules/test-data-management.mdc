@@ -1,0 +1,564 @@
+---
+description: Rule for managing test data including data isolation, cleanup strategies, sensitive data handling, and environment-specific configurations
+alwaysApply: false
+---
+
+# Test Data Management
+
+## Purpose
+
+This rule defines standards for managing test data throughout the testing lifecycle. Proper test data management ensures test reliability, data security, and environment stability while enabling effective testing across all environments.
+
+## Test Data Principles
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Test Data Lifecycle                          │
+├─────────────────────────────────────────────────────────────────┤
+│  CREATE  →  ISOLATE  →  USE  →  VERIFY  →  CLEANUP  →  REPORT  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Core Principles
+
+- **Isolation:** Test data MUST be isolated per test/suite to prevent interference
+- **Repeatability:** Tests MUST produce the same results with the same data
+- **Security:** Sensitive data MUST be anonymized or synthesized
+- **Cleanup:** Test data MUST be cleaned up after test execution
+- **Traceability:** Test data sources MUST be documented and auditable
+
+## 1. Data Isolation
+
+**Purpose:** Prevent test interference and ensure reliable, deterministic test results.
+
+### Isolation Strategies
+
+| Strategy | Use Case | Pros | Cons |
+|----------|----------|------|------|
+| Unique identifiers | All tests | Simple, reliable | May accumulate data |
+| Database transactions | Unit/Integration | Fast cleanup, atomic | Limited to DB tests |
+| Dedicated schemas | Integration | Strong isolation | More setup overhead |
+| Container-per-test | E2E | Complete isolation | Slower execution |
+| Time-based partitioning | Parallel tests | Good for sharding | Requires coordination |
+
+### Requirements
+
+- MUST use unique identifiers (UUIDs or timestamps) for test-created entities
+- MUST NOT share mutable state between test cases
+- MUST NOT rely on data created by other tests
+- SHOULD use database transactions for unit and integration tests
+- SHOULD use dedicated test schemas or databases for integration testing
+- MUST prefix test data with identifiable markers (e.g., `test_`, `_test_`)
+
+### Example: Unique Test Data
+
+```typescript
+// Good: Isolated test data with unique identifiers
+describe('UserService', () => {
+  let testUser: User;
+  const testId = `test_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+  beforeEach(async () => {
+    testUser = await createUser({
+      email: `${testId}@test.example.com`,
+      name: `Test User ${testId}`,
+    });
+  });
+
+  afterEach(async () => {
+    await deleteUser(testUser.id);
+  });
+
+  it('should update user profile', async () => {
+    const updated = await updateUser(testUser.id, { name: 'New Name' });
+    expect(updated.name).toBe('New Name');
+  });
+});
+
+// Bad: Shared/hardcoded test data
+describe('UserService', () => {
+  it('should update user profile', async () => {
+    // Relies on pre-existing data - fragile!
+    const updated = await updateUser('user-123', { name: 'New Name' });
+    expect(updated.name).toBe('New Name');
+  });
+});
+```
+
+### Example: Transaction-Based Isolation
+
+```typescript
+// Good: Transaction rollback for database tests
+describe('OrderRepository', () => {
+  let transaction: Transaction;
+
+  beforeEach(async () => {
+    transaction = await db.beginTransaction();
+  });
+
+  afterEach(async () => {
+    await transaction.rollback();
+  });
+
+  it('should create order with items', async () => {
+    const order = await OrderRepository.create(
+      { customerId: 'cust-1', items: [{ productId: 'prod-1', quantity: 2 }] },
+      { transaction }
+    );
+    expect(order.items).toHaveLength(1);
+    // Transaction rollback will clean up automatically
+  });
+});
+```
+
+## 2. Cleanup Strategies
+
+**Purpose:** Ensure test environments remain clean and tests don't leave orphaned data.
+
+### Cleanup Approaches
+
+| Approach | When to Use | Implementation |
+|----------|-------------|----------------|
+| Teardown hooks | After each test/suite | `afterEach`, `afterAll` |
+| Transaction rollback | Database tests | Wrap test in transaction |
+| Time-based expiry | Long-running environments | TTL on test records |
+| Batch cleanup jobs | Scheduled maintenance | Cron jobs, CI pipelines |
+| Container disposal | E2E tests | Docker cleanup |
+
+### Requirements
+
+- MUST clean up test data in `afterEach` or `afterAll` hooks
+- MUST handle cleanup failures gracefully (log and continue)
+- MUST clean up in reverse order of creation (dependencies first)
+- SHOULD use soft deletes with TTL for environments where immediate cleanup isn't possible
+- MUST NOT leave orphaned data in shared environments
+- SHOULD implement cleanup verification in CI/CD pipelines
+
+### Example: Comprehensive Cleanup
+
+```typescript
+describe('OrderWorkflow', () => {
+  const createdResources: { type: string; id: string }[] = [];
+
+  const trackResource = (type: string, id: string) => {
+    createdResources.push({ type, id });
+  };
+
+  afterEach(async () => {
+    // Clean up in reverse order (LIFO)
+    for (const resource of createdResources.reverse()) {
+      try {
+        await cleanupResource(resource.type, resource.id);
+      } catch (error) {
+        console.warn(`Cleanup failed for ${resource.type}:${resource.id}`, error);
+        // Continue cleanup - don't fail test on cleanup errors
+      }
+    }
+    createdResources.length = 0;
+  });
+
+  it('should process complete order workflow', async () => {
+    const customer = await createCustomer({ name: 'Test Customer' });
+    trackResource('customer', customer.id);
+
+    const order = await createOrder({ customerId: customer.id });
+    trackResource('order', order.id);
+
+    const payment = await processPayment({ orderId: order.id });
+    trackResource('payment', payment.id);
+
+    expect(order.status).toBe('completed');
+  });
+});
+```
+
+### Example: Batch Cleanup Job
+
+```yaml
+# CI/CD scheduled cleanup job
+cleanup_job:
+  schedule: "0 2 * * *"  # Run at 2 AM daily
+  steps:
+    - name: Cleanup stale test data
+      run: |
+        # Delete test records older than 24 hours
+        DELETE FROM users WHERE email LIKE 'test_%@test.example.com' 
+          AND created_at < NOW() - INTERVAL '24 hours';
+        
+        DELETE FROM orders WHERE reference LIKE 'test_%'
+          AND created_at < NOW() - INTERVAL '24 hours';
+```
+
+## 3. Sensitive Data Handling
+
+**Purpose:** Protect sensitive information while maintaining realistic test scenarios.
+
+### Data Classification
+
+| Classification | Examples | Handling |
+|----------------|----------|----------|
+| PII (Personal) | Names, emails, addresses | Anonymize or synthesize |
+| Financial | Credit cards, bank accounts | Use test credentials |
+| Authentication | Passwords, tokens, API keys | Use test secrets |
+| Health (PHI) | Medical records | Strict anonymization |
+| Business Critical | Proprietary algorithms | Mock or isolate |
+
+### Requirements
+
+- MUST NOT use real production data containing PII in test environments
+- MUST anonymize or pseudonymize production data before use in testing
+- MUST use synthetic data generators for sensitive fields
+- MUST NOT commit secrets or credentials to version control
+- MUST use environment variables or secret managers for test credentials
+- SHOULD use established test payment credentials (Stripe test cards, etc.)
+- MUST encrypt sensitive test data at rest in non-production environments
+- MUST audit access to production data used for test data generation
+
+### Anonymization Techniques
+
+| Technique | Use Case | Example |
+|-----------|----------|---------|
+| Masking | Partial visibility needed | `john.doe@email.com` → `j***.d**@e****.com` |
+| Substitution | Realistic but fake | Real name → Fake name from dictionary |
+| Shuffling | Maintain distribution | Shuffle values across records |
+| Hashing | Consistency needed | `SHA256(email + salt)` |
+| Synthetic generation | No production data | Faker, Chance.js libraries |
+
+### Example: Synthetic Data Generation
+
+```typescript
+import { faker } from '@faker-js/faker';
+
+// Good: Synthetic test data factory
+const createTestUser = (overrides: Partial<User> = {}): User => ({
+  id: faker.string.uuid(),
+  email: faker.internet.email({ provider: 'test.example.com' }),
+  name: faker.person.fullName(),
+  phone: faker.phone.number(),
+  address: {
+    street: faker.location.streetAddress(),
+    city: faker.location.city(),
+    country: faker.location.country(),
+    postalCode: faker.location.zipCode(),
+  },
+  // Test credit card - never real
+  paymentMethod: {
+    type: 'card',
+    last4: '4242',
+    token: 'tok_visa_test',
+  },
+  ...overrides,
+});
+
+// Good: Deterministic seeding for reproducibility
+const createSeededTestData = (seed: number) => {
+  faker.seed(seed);
+  return createTestUser();
+};
+```
+
+### Example: Environment-Aware Credentials
+
+```typescript
+// Good: Test credentials from environment
+const getTestCredentials = () => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Cannot use test credentials in production');
+  }
+  
+  return {
+    stripeKey: process.env.STRIPE_TEST_KEY || 'sk_test_default',
+    apiKey: process.env.TEST_API_KEY || 'test-api-key',
+    dbPassword: process.env.TEST_DB_PASSWORD,
+  };
+};
+
+// Bad: Hardcoded credentials
+const credentials = {
+  stripeKey: 'sk_live_xxx', // NEVER do this!
+  apiKey: 'real-api-key',
+};
+```
+
+## 4. Environment-Specific Configurations
+
+**Purpose:** Tailor test data strategies to each environment's needs and constraints.
+
+### Environment Matrix
+
+| Environment | Data Source | Refresh Cycle | Isolation Level | Cleanup |
+|-------------|-------------|---------------|-----------------|---------|
+| Local/Dev | Fixtures, Synthetic | Per run | Container/Schema | Automatic |
+| CI/CD | Fixtures, Synthetic | Per pipeline | Container | Automatic |
+| QA | Subset + Synthetic | Daily/Weekly | Schema | Nightly job |
+| Staging | Anonymized prod | Weekly | Shared with tags | Weekly |
+| Performance | Scaled synthetic | Per test run | Dedicated | Post-test |
+
+### Requirements
+
+- MUST define data strategy per environment in configuration
+- MUST NOT use production data sources in CI/CD pipelines
+- SHOULD use fixtures and synthetic data for local development
+- MUST refresh shared environment data on a defined schedule
+- SHOULD tag test data with environment and purpose identifiers
+- MUST document data dependencies between environments
+- SHOULD implement data volume scaling for performance testing
+
+### Example: Environment Configuration
+
+```yaml
+# test-data-config.yaml
+environments:
+  local:
+    source: fixtures
+    database:
+      host: localhost
+      name: app_test
+      reset: before_each_run
+    cleanup:
+      strategy: drop_recreate
+      
+  ci:
+    source: synthetic
+    database:
+      host: $CI_DB_HOST
+      name: test_$CI_JOB_ID
+      reset: before_each_run
+    cleanup:
+      strategy: drop_database
+      on_failure: preserve_for_debug
+      
+  qa:
+    source: anonymized_production_subset
+    database:
+      host: qa-db.internal
+      name: qa_test
+      reset: nightly
+    cleanup:
+      strategy: soft_delete_with_ttl
+      ttl_hours: 48
+    refresh:
+      schedule: "0 0 * * *"  # Daily at midnight
+      
+  staging:
+    source: anonymized_production
+    database:
+      host: staging-db.internal
+      name: staging
+      reset: weekly
+    cleanup:
+      strategy: tagged_cleanup
+      tag_prefix: "test_"
+    restrictions:
+      - no_destructive_tests
+      - read_heavy_preferred
+      
+  performance:
+    source: scaled_synthetic
+    database:
+      host: perf-db.internal
+      name: perf_test
+      reset: before_each_run
+    data_volume:
+      users: 100000
+      orders: 1000000
+      products: 50000
+    cleanup:
+      strategy: truncate_all
+```
+
+### Example: Environment-Aware Test Setup
+
+```typescript
+// test-setup.ts
+interface TestDataConfig {
+  source: 'fixtures' | 'synthetic' | 'anonymized';
+  cleanup: 'transaction' | 'delete' | 'truncate';
+  seedData: boolean;
+}
+
+const getTestDataConfig = (): TestDataConfig => {
+  const env = process.env.TEST_ENV || 'local';
+  
+  const configs: Record<string, TestDataConfig> = {
+    local: {
+      source: 'fixtures',
+      cleanup: 'transaction',
+      seedData: true,
+    },
+    ci: {
+      source: 'synthetic',
+      cleanup: 'truncate',
+      seedData: false,
+    },
+    qa: {
+      source: 'anonymized',
+      cleanup: 'delete',
+      seedData: false,
+    },
+  };
+  
+  return configs[env] || configs.local;
+};
+
+// Global test setup
+beforeAll(async () => {
+  const config = getTestDataConfig();
+  
+  if (config.seedData) {
+    await seedFixtures();
+  }
+});
+
+afterAll(async () => {
+  const config = getTestDataConfig();
+  
+  switch (config.cleanup) {
+    case 'truncate':
+      await truncateAllTables();
+      break;
+    case 'delete':
+      await deleteTestData();
+      break;
+    // 'transaction' cleanup handled per-test
+  }
+});
+```
+
+## 5. Test Data Factories
+
+**Purpose:** Provide consistent, maintainable patterns for creating test data.
+
+### Requirements
+
+- MUST use factory functions to create test entities
+- MUST support overriding default values
+- SHOULD use builder pattern for complex entities
+- MUST ensure factories produce valid domain objects
+- SHOULD centralize factories in dedicated test utilities
+
+### Example: Factory Pattern
+
+```typescript
+// factories/user.factory.ts
+import { faker } from '@faker-js/faker';
+
+interface UserFactoryOptions {
+  traits?: ('admin' | 'verified' | 'premium')[];
+  overrides?: Partial<User>;
+}
+
+export const userFactory = {
+  build(options: UserFactoryOptions = {}): User {
+    const { traits = [], overrides = {} } = options;
+    
+    const user: User = {
+      id: faker.string.uuid(),
+      email: faker.internet.email({ provider: 'test.example.com' }),
+      name: faker.person.fullName(),
+      role: 'user',
+      verified: false,
+      subscription: 'free',
+      createdAt: new Date(),
+      ...overrides,
+    };
+    
+    // Apply traits
+    if (traits.includes('admin')) {
+      user.role = 'admin';
+    }
+    if (traits.includes('verified')) {
+      user.verified = true;
+    }
+    if (traits.includes('premium')) {
+      user.subscription = 'premium';
+    }
+    
+    return user;
+  },
+  
+  async create(options: UserFactoryOptions = {}): Promise<User> {
+    const user = this.build(options);
+    return await UserRepository.insert(user);
+  },
+  
+  async createMany(count: number, options: UserFactoryOptions = {}): Promise<User[]> {
+    return Promise.all(
+      Array.from({ length: count }, () => this.create(options))
+    );
+  },
+};
+
+// Usage
+const adminUser = await userFactory.create({ traits: ['admin', 'verified'] });
+const regularUsers = await userFactory.createMany(5);
+```
+
+## 6. Data Version Control
+
+**Purpose:** Track and manage test data changes alongside code.
+
+### Requirements
+
+- MUST version control fixture files
+- SHOULD use migrations for test database schema changes
+- MUST document breaking changes to test data format
+- SHOULD maintain backwards compatibility for test data where possible
+
+### Example: Fixture Organization
+
+```
+test/
+├── fixtures/
+│   ├── users/
+│   │   ├── base.json
+│   │   ├── admin.json
+│   │   └── premium.json
+│   ├── orders/
+│   │   ├── pending.json
+│   │   ├── completed.json
+│   │   └── refunded.json
+│   └── index.ts          # Fixture loader
+├── factories/
+│   ├── user.factory.ts
+│   ├── order.factory.ts
+│   └── index.ts
+└── seeds/
+    ├── 001_base_data.ts
+    └── 002_test_scenarios.ts
+```
+
+## Anti-Patterns
+
+### Avoid These Practices
+
+- Using production data directly without anonymization
+- Hardcoding test data that depends on specific database state
+- Sharing mutable state between tests
+- Ignoring cleanup, leading to data accumulation
+- Using sequential IDs that collide across test runs
+- Storing secrets in test files or fixtures
+- Creating test data without cleanup strategy
+- Relying on test execution order
+
+### Signs of Poor Test Data Management
+
+- Flaky tests due to data conflicts
+- Tests that pass locally but fail in CI
+- Growing test database size over time
+- Sensitive data leaks in test logs
+- Tests that require manual data setup
+- Inability to run tests in parallel
+
+## Checklist
+
+### Test Data Review Checklist
+
+- [ ] Test data is isolated per test case
+- [ ] Cleanup is implemented in teardown hooks
+- [ ] No sensitive/PII data in test fixtures
+- [ ] Factories used for entity creation
+- [ ] Environment-specific configurations defined
+- [ ] Test credentials stored securely (not in code)
+- [ ] Data dependencies documented
+- [ ] Parallel execution considered
