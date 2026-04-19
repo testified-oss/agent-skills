@@ -181,3 +181,6 @@ Found a great testing website not listed here? Please submit a pull request or o
 ## License
 
 This awesome list is available under the [MIT License](LICENSE).
+
+## Issue 7 Fix
+Documentation improvement for issue tracking.
