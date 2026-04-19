@@ -283,3 +283,7 @@ cd /path/to/agent-skills
 ## License
 
 MIT
+
+## Issue 7 - Documentation
+- Added documentation for issue tracking guidelines
+- Reference: https://github.com/testified-oss/agent-skills/issues/7
